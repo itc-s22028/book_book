@@ -1,112 +1,51 @@
-const express = require("express");
 const passport = require("passport");
-const { PrismaClient } = require("@prisma/client");
-const LocalStrategy = require("passport-local");
-const { check, validationResult } = require("express-validator");
-const scrypt = require("../util/auth.js");
-
+const express = require('express');
 const router = express.Router();
+const { PrismaClient } = require('@prisma/client');
+const { validationResult, check } = require('express-validator');
+const { calcHash, generateSalt } = require('../util/auth')
+
+
+
 const prisma = new PrismaClient();
 
-passport.use(new LocalStrategy(
-    async (username, password, done) => {
-      try {
-        const user = await prisma.user.findUnique({ where: { name: username } });
 
-        if (!user) {
-          return done(null, false, { message: 'ユーザーが見つかりません' });
-        }
-
-        const hashedPassword = scrypt.calcHash(password, user.salt).toString('hex');
-        if (hashedPassword !== user.password) {
-          return done(null, false, { message: 'パスワードが一致しません' });
-        }
-
-        return done(null, user);
-      } catch (error) {
-        return done(error);
-      }
-    }
-));
-
-passport.serializeUser((user, done) => {
-  process.nextTick(() => {
-    done(null, { id: user.id, name: user.name });
+/**
+ * ログイン状態チェック
+ */
+router.get("/check", (req, res, next) => {
+  if (!req.user) {
+    // 未ログインなら、Error オブジェクトを作って、ステータスを設定してスロー
+    const err = new Error("NG");
+    err.status = 401;
+    throw err;
+  }
+  // ここに来れるなら、ログイン済み。
+  res.json({
+    message: "logged in"
   });
 });
 
-passport.deserializeUser((user, done) => {
-  process.nextTick(() => {
-    done(null, user);
-  });
-});
-
-const checkAuthentication = (req, res, next) => {
-  if (req.isAuthenticated()) {
-    return res.status(200).json({ message: "logged in" });
-  } else {
-    return res.status(401).json({ message: "unauthenticated" });
-  }
-};
-
-
-router.get("/", checkAuthentication, (req, res) => {
-  // 必要に応じて追加のロジックを記述
-  res.json({ message: "このルートにアクセスできます。" });
-});
-
-router.get("/login", (req, res, next) => {
-  const data = {
-    title: "Users/Login",
-    content: "名前とパスワードを入力してください"
-  };
-  if (req.isAuthenticated()) {
-    return res.status(200).json({ message: "OK" , user: req.user});
-  } else {
-    return res.status(401).json({ message: "name and/or password is invalid"});
-  }
-});
-
+/**
+ * ユーザ認証
+ */
 router.post("/login", passport.authenticate("local", {
-  successReturnToOrRedirect: "/users/normally",
-  failureRedirect: "/users/error",
-  failureMessage: true,
-  keepSessionInfo: true
+  failWithError: true // passport によるログインに失敗したらエラーを発生させる
 }), (req, res, next) => {
-  try {
-    // ログイン成功後にユーザー情報を取得
-    const user = req.user;
-
-    // ユーザー情報をボードに渡す処理
-    const username = user.name;
-
-    // ボードへのリダイレクト
-    res.redirect(`/board?username=${username}`);
-  } catch (error) {
-    console.error('ログイン成功後の処理エラー:', error);
-    res.redirect("/users/error");
-  }
+  // ここに来れるなら、ログインは成功していることになる。
+  res.json({
+    message: "OK"
+  });
 });
 
-router.get("/error", (req, res, next) => {
-  res.json({message: "name and/or password is invalid"})
-})
-
-router.get("/normally", (req, res, next) => {
-  res.json({message: "OK"})
-})
-
-router.get("/logout", (req, res, next) => {
-  const LoginInfo = req.query.username
-
-  return res.status(200).json({LoginInfo});
+router.get("/login", (req, res) => {
+  res.render("login"); // ユーザ登録ページを表示するための処理を追加する
 });
-
 
 /**
  * ユーザ新規作成
  */
-router.post("/signup", [
+router.post("/register", [
   // 入力値チェックミドルウェア
   check("email").notEmpty({ ignore_whitespace: true }),
   check("name").notEmpty({ ignore_whitespace: true }),
@@ -142,23 +81,16 @@ router.post("/signup", [
   }
 });
 
-router.get("/signup", (req, res) => {
+router.get("/register", (req, res) => {
   res.render("signup"); // ユーザ登録ページを表示するための処理を追加する
 });
 
-// ランダムな文字列を生成する関数
-function generateSalt() {
-  const crypto = require('crypto');
-  return crypto.randomBytes(16).toString('hex');
-}
+router.get("/logout", (req, res, next) =>  {
+  req.logout((err) => {
+    res.status(200).json({message: "OK"});
+  });
+});
 
-// パスワードをハッシュ化する関数
-function calcHash(password, salt) {
-  const crypto = require('crypto');
-  const hash = crypto.createHash('sha256');
-  hash.update(password + salt);
-  return hash.digest('hex');
-}
 
 
 module.exports = router;

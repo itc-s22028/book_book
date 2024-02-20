@@ -7,8 +7,13 @@ const usersRouter = require("./routes/users.js");
 const cors = require('cors');
 const passport = require("passport");
 const session = require("express-session");
+const {authconfig} = require("./util/auth");
 
 const app = express();
+
+BigInt.prototype.toJSON = function () {
+  return this.toString()
+}
 
 app.use(session({
   secret: "</2aiG^bd29iC5rj)=G?mKTm",
@@ -17,8 +22,9 @@ app.use(session({
   cookie: { maxAge: 60 * 60 * 1000 }
 }));
 
-app.use(passport.initialize());
-app.use(passport.session());
+// passport
+app.use(passport.authenticate("session"));
+authconfig(passport);
 
 app.use((req, res, next) => {
   const messages = req.session.messages || [];
@@ -44,5 +50,6 @@ app.use(express.static(path.join(__dirname, "routes")));
 
 app.use("/", indexRouter);
 app.use("/users", usersRouter);
+
 
 module.exports = app;
