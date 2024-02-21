@@ -39,7 +39,8 @@ router.post("/login", passport.authenticate("local", {
 });
 
 router.get("/login", (req, res) => {
-  res.render("login"); // ユーザ登録ページを表示するための処理を追加する
+  res.render("login");
+  res.redirect(`/book?username=${username}`);
 });
 
 /**

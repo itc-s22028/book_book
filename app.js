@@ -1,9 +1,11 @@
 const express = require("express");
+
 const path = require("path");
 const cookieParser = require("cookie-parser");
 const logger = require("morgan");
 const indexRouter = require("./routes/index.js");
 const usersRouter = require("./routes/users.js");
+const booksRouter = require("./routes/book.js");
 const adminRouter = require("./routes/admin.js");
 const cors = require('cors');
 const passport = require("passport");
@@ -51,6 +53,7 @@ app.use(express.static(path.join(__dirname, "routes")));
 
 app.use("/", indexRouter);
 app.use("/users", usersRouter);
+app.use("/book", booksRouter);
 app.use("/admin", adminRouter);
 
 

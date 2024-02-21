@@ -1,8 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const authMiddleware = require('./authMiddleware'); // パスはプロジェクトの実際のディレクトリ構造に合わせて変更する
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+
+const pageSize = 10; // 適切なページサイズに変更する
 
 const loginCheck = (req, res, next) => {
     if (!req.user) {
@@ -13,35 +14,34 @@ const loginCheck = (req, res, next) => {
     next();
 };
 
-
 /**
- * メッセージ一覧ページ
+ * 書籍一覧ページ
  */
-// router.get("/list?page=p", loginCheck, async (req, res, next) => {
-//     try {
-//         // ページ番号をパラメータから取る。なければデフォルトは 1
-//         const page = +req.params.page || 1;
-//
-//         // メッセージ取ってくる
-//         const messages = await prisma.message.findMany({
-//             skip: (page - 1) * pageSize,
-//             take: pageSize,
-//             orderBy: [
-//                 { createdAt: "desc" }
-//             ],
-//             include: {
-//                 account: true
-//             }
-//         });
-//
-//         // JSON形式でクライアントに返す
-//         res.status(200).json({ messages });
-//     } catch (error) {
-//         // エラーが発生した場合はエラーレスポンスを返す
-//         res.status(500).json({ error: 'Error fetching messages' });
-//     } finally {
-//         await prisma.$disconnect();
-//     }
-// });
+router.get("/list",
+    loginCheck,
+    async (req, res, next) => {
+        try {
+            // ページ番号をクエリパラメータから取得。なければデフォルトは 1
+            const page = +req.query.page || 1;
+
+            // 書籍一覧を取得
+            const books = await prisma.books.findMany({
+                skip: (page - 1) * pageSize,
+                take: pageSize,
+                orderBy: [
+                    { id: "asc" } // 適切な orderBy の指定が必要
+                ],
+            });
+
+            // JSON形式でクライアントに返す
+            res.status(200).json({ books });
+        } catch (error) {
+            // エラーが発生した場合はエラーレスポンスを返す
+            console.error('Error fetching books:', error);
+            res.status(500).json({ error: 'Error fetching books' });
+        } finally {
+            await prisma.$disconnect();
+        }
+    });
 
 module.exports = router;
