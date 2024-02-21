@@ -4,6 +4,7 @@ const cookieParser = require("cookie-parser");
 const logger = require("morgan");
 const indexRouter = require("./routes/index.js");
 const usersRouter = require("./routes/users.js");
+const adminRouter = require("./routes/admin.js");
 const cors = require('cors');
 const passport = require("passport");
 const session = require("express-session");
@@ -50,6 +51,7 @@ app.use(express.static(path.join(__dirname, "routes")));
 
 app.use("/", indexRouter);
 app.use("/users", usersRouter);
+app.use("/admin", adminRouter);
 
 
 module.exports = app;
