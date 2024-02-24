@@ -16,7 +16,7 @@ const prisma = new PrismaClient();
 router.get("/check", (req, res, next) => {
   if (!req.user) {
     // 未ログインなら、Error オブジェクトを作って、ステータスを設定してスロー
-    const err = new Error("NG");
+    const err = new Error("unauthenticated");
     err.status = 401;
     throw err;
   }
