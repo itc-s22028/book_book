@@ -28,7 +28,7 @@ router.post("/start", async (req, res) => {
 
         // 既に貸し出されている場合
         if (existingRental) {
-            return res.status(409).json({ error: "指定された書籍はすでに貸出中です。" });
+            return res.status(409).json({ error: "貸出中のため失敗" });
         }
 
         // 貸出を開始
@@ -43,10 +43,25 @@ router.post("/start", async (req, res) => {
             }
         });
 
+        const response = {
+            message: "貸出成功",
+            rental: {
+                id: createdRental.id,
+                bookId: createdRental.bookId,
+                rentalDate: createdRental.rentalDate,
+                returnDeadline: createdRental.returnDeadline,
+                returnDate: createdRental.returnDate
+            }
+        };
+
+// userId と returnDate を表示したくない場合
+        delete response.rental.userId;
+        delete response.rental.returnDate;
+
         return res.status(201).json({
-            status: "success",
-            message: "貸出が成功しました。",
-            rental: createdRental
+            // message: "貸出成功",
+            // rental: createdRental
+            response
         });
 
     } catch (error) {
@@ -71,7 +86,7 @@ router.put("/return", loginCheck, async (req, res) => {
         });
 
         if (!existingRental) {
-            return res.status(404).json({ result: "NG", error: "指定された貸出情報が見つかりませんでした。" });
+            return res.status(404).json({ result: "NG"　});
         }
 
 // Step 3: 返却処理
@@ -84,14 +99,14 @@ router.put("/return", loginCheck, async (req, res) => {
                     returnDate: new Date()
                 }
             });
-            return res.status(200).json({ result: "OK", message: "返却が成功しました。" });
+            return res.status(200).json({ result: "OK" });
         } else {
-            return res.status(404).json({ result: "NG", error: "指定された貸出情報が見つかりませんでした。" });
+            return res.status(404).json({ result: "NG"　});
         }
 
     } catch (error) {
         console.error("Error returning rental:", error);
-        return res.status(400).json({ result: "NG", error: "その他のエラーが発生しました。" });
+        return res.status(400).json({ result: "NG"　});
     }
 });
 
