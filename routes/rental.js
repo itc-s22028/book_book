@@ -156,4 +156,49 @@ router.get("/current", loginCheck, async (req, res) => {
 });
 
 
+// 過去に借りてたやつ
+
+router.get("/history", loginCheck, async (req, res) => {
+    try {
+        const userId = req.user.id;
+
+        // 貸出情報を取得
+        const rentalHistory = await prisma.rental.findMany({
+            where: {
+                userId: userId,
+                returnDate: { not: null } // 返却済みのものを検索
+            },
+            select: {
+                id: true,
+                bookId: true,
+                rentalDate: true,
+                returnDate: true,
+                books: {
+                    select: {
+                        title: true
+                    }
+                }
+            }
+        });
+
+        // レスポンスデータの整形
+        const formattedResponse = rentalHistory.map(history => ({
+            rentalId: history.id,
+            bookId: history.bookId,
+            bookName: history.books.title,
+            rentalDate: history.rentalDate,
+            returnDate: history.returnDate
+        }));
+
+        return res.status(200).json({
+            rentalHistory: formattedResponse
+        });
+
+    } catch (error) {
+        console.error("Error fetching rental history:", error);
+        return res.status(500).json({ error: "サーバーエラーが発生しました。" });
+    }
+});
+
+
 module.exports = router;
