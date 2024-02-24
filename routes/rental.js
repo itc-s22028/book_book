@@ -55,4 +55,44 @@ router.post("/start", async (req, res) => {
     }
 });
 
+//返却
+
+router.put("/return", loginCheck, async (req, res) => {
+    try {
+        const rentalId = req.body.id;
+
+        // Step 1: 貸出情報を確認
+        const existingRental = await prisma.rental.findFirst({
+            where: {
+                id: rentalId,
+                userId: req.user.id, // ログインしているユーザーのIDに修正
+                returnDate: null // 未返却のものを検索
+            }
+        });
+
+        if (!existingRental) {
+            return res.status(404).json({ result: "NG", error: "指定された貸出情報が見つかりませんでした。" });
+        }
+
+// Step 3: 返却処理
+        if (existingRental) {
+            const returnedRental = await prisma.rental.update({
+                where: {
+                    id: existingRental.id
+                },
+                data: {
+                    returnDate: new Date()
+                }
+            });
+            return res.status(200).json({ result: "OK", message: "返却が成功しました。" });
+        } else {
+            return res.status(404).json({ result: "NG", error: "指定された貸出情報が見つかりませんでした。" });
+        }
+
+    } catch (error) {
+        console.error("Error returning rental:", error);
+        return res.status(400).json({ result: "NG", error: "その他のエラーが発生しました。" });
+    }
+});
+
 module.exports = router;
