@@ -44,4 +44,43 @@ router.get("/list",
         }
     });
 
+
+/**
+ * 書籍詳細ページ
+ */
+router.get("/detail/:id",
+    loginCheck,
+    async (req, res, next) => {
+
+        const uid = +req.params.uid;
+        const page = +req.params.page || 1;
+        // ユーザID(uid)とページ番号(page)を使ってデータ取ってくる。
+        const books = await prisma.books.findMany({
+            where: {accountId: uid},
+            skip: (page - 1) * pageSize,
+            take: pageSize,
+            orderBy: [
+                {createdAt: "desc"}
+            ]
+        });
+        // ターゲットのユーザ情報を取ってくる
+        const target = await prisma.user.findUnique({
+            where: {id: uid},
+            select: {
+                id: true,
+                name: true
+            }
+        });
+        const data = {
+            title: "Boards",
+            user: req.user,
+            target,
+            content: messages,
+            page,
+        };
+        res.render("board/home", data);
+    });
+
+
+
 module.exports = router;

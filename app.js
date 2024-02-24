@@ -1,16 +1,17 @@
 const express = require("express");
-
 const path = require("path");
 const cookieParser = require("cookie-parser");
 const logger = require("morgan");
 const indexRouter = require("./routes/index.js");
 const usersRouter = require("./routes/users.js");
 const booksRouter = require("./routes/book.js");
+const rentalRouter = require("./routes/rental.js");
 const adminRouter = require("./routes/admin.js");
 const cors = require('cors');
 const passport = require("passport");
 const session = require("express-session");
-const {authconfig} = require("./util/auth");
+const { authconfig } = require("./util/auth");
+const { resetWatchers } = require("nodemon/lib/monitor/watch");
 
 const app = express();
 
@@ -25,8 +26,10 @@ app.use(session({
   cookie: { maxAge: 60 * 60 * 1000 }
 }));
 
-// passport
-app.use(passport.authenticate("session"));
+// passportの初期化とセッションの設定
+app.use(passport.initialize());
+app.use(passport.session());
+
 authconfig(passport);
 
 app.use((req, res, next) => {
@@ -54,7 +57,7 @@ app.use(express.static(path.join(__dirname, "routes")));
 app.use("/", indexRouter);
 app.use("/users", usersRouter);
 app.use("/book", booksRouter);
+app.use("/rental", rentalRouter);
 app.use("/admin", adminRouter);
-
 
 module.exports = app;
