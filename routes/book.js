@@ -48,39 +48,62 @@ router.get("/list",
 /**
  * 書籍詳細ページ
  */
-router.get("/detail/:id",
-    loginCheck,
-    async (req, res, next) => {
+router.get("/detail/:id", loginCheck, async (req, res) => {
+    try {
+        const bookId = parseInt(req.params.id);
 
-        const uid = +req.params.uid;
-        const page = +req.params.page || 1;
-        // ユーザID(uid)とページ番号(page)を使ってデータ取ってくる。
-        const books = await prisma.books.findMany({
-            where: {accountId: uid},
-            skip: (page - 1) * pageSize,
-            take: pageSize,
-            orderBy: [
-                {createdAt: "desc"}
-            ]
-        });
-        // ターゲットのユーザ情報を取ってくる
-        const target = await prisma.user.findUnique({
-            where: {id: uid},
-            select: {
-                id: true,
-                name: true
+        // 書籍情報を取得
+        const bookDetail = await prisma.books.findUnique({
+            where: {
+                id: bookId
             }
         });
-        const data = {
-            title: "Boards",
-            user: req.user,
-            target,
-            content: messages,
-            page,
-        };
-        res.render("board/home", data);
-    });
 
+        if (!bookDetail) {
+            return res.status(404).json({ error: "指定された書籍は存在しません。" });
+        }
+
+        // 貸出情報を取得
+        const rentalInfo = await prisma.rental.findFirst({
+            where: {
+                bookId: bookId,
+                returnDate: null
+            },
+            select: {
+                userId: true,
+                rentalDate: true,
+                returnDeadline: true,
+                users: {
+                    select: {
+                        name: true
+                    }
+                }
+            }
+        });
+
+        // レスポンスデータの整形
+        const response = {
+            id: bookDetail.id,
+            isbn13: bookDetail.isbn13,
+            title: bookDetail.title,
+            author: bookDetail.author,
+            publishDate: bookDetail.publishDate,
+            rentalInfo: rentalInfo
+                ? {
+                    userName: rentalInfo.users.name,
+                    rentalDate: rentalInfo.rentalDate,
+                    returnDeadline: rentalInfo.returnDeadline
+                }
+                : null
+        };
+
+        return res.status(200).json(response);
+
+    } catch (error) {
+        console.error("Error fetching book detail:", error);
+        return res.status(500).json({ error: "サーバーエラーが発生しました。" });
+    }
+});
 
 
 module.exports = router;

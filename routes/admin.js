@@ -40,6 +40,96 @@ const isAdmin = async (req, res, next) => {
     }
 };
 
+
+//書籍情報更新
+
+router.put("/book/update", isAdmin, async (req, res) => {
+    try {
+        const { bookId, isbn13, title, author, publishDate } = req.body;
+
+        // 書籍が存在するか確認
+        const existingBook = await prisma.books.findUnique({
+            where: {
+                id: bookId
+            }
+        });
+
+        if (!existingBook) {
+            return res.status(404).json({ result: "NG", error: "指定された書籍は存在しません。" });
+        }
+
+        // 書籍情報を更新
+        const updatedBook = await prisma.books.update({
+            where: {
+                id: bookId
+            },
+            data: {
+                isbn13: isbn13,
+                title: title,
+                author: author,
+                publishDate: publishDate
+            }
+        });
+
+        return res.status(200).json({ result: "OK" });
+
+    } catch (error) {
+        return res.status(400).json({ result: "NG" });
+    }
+});
+
+//全ユーザーの貸出中の書籍一覧
+
+
+router.get("/rental/current", isAdmin, async (req, res) => {
+    try {
+        // 全ユーザーの貸出中書籍を取得
+        const rentalBooks = await prisma.rental.findMany({
+            where: {
+                returnDate: null // 未返却のものを対象にする
+            },
+            select: {
+                id: true,
+                userId: true,
+                bookId: true,
+                rentalDate: true,
+                returnDeadline: true,
+                users: {
+                    select: {
+                        name: true
+                    }
+                },
+                books: {
+                    select: {
+                        title: true
+                    }
+                }
+            }
+        });
+
+        // レスポンスデータの整形
+        const formattedResponse = rentalBooks.map(rental => ({
+            rentalId: rental.id,
+            userId: rental.userId,
+            userName: rental.users.name,
+            bookId: rental.bookId,
+            bookName: rental.books.title,
+            rentalDate: rental.rentalDate,
+            returnDeadline: rental.returnDeadline
+        }));
+
+        return res.status(200).json({
+            rentalBooks: formattedResponse
+        });
+
+    } catch (error) {
+        console.error("Error fetching current rentals:", error);
+        return res.status(500).json({ error: "サーバーエラーが発生しました。" });
+    }
+});
+
+
+
 // POST /admin/book/create
 router.post('/book/create',
     isAdmin,
@@ -81,5 +171,62 @@ router.post('/book/create',
             res.status(500).json({ result: 'NG', error: 'Internal server error.' });
         }
     });
+
+//特定のユーザーの貸出一覧
+
+router.get("/rental/current/:uid", isAdmin, async (req, res) => {
+    try {
+        const userId = parseInt(req.params.uid, 10);
+
+        // 特定ユーザーの貸出中書籍を取得
+        const userRentalBooks = await prisma.rental.findMany({
+            where: {
+                userId: userId,
+                returnDate: null // 未返却のものを対象にする
+            },
+            select: {
+                id: true,
+                bookId: true,
+                rentalDate: true,
+                returnDeadline: true,
+                books: {
+                    select: {
+                        title: true
+                    }
+                }
+            }
+        });
+
+        // 特定ユーザーの情報を取得
+        const userInfo = await prisma.users.findUnique({
+            where: {
+                id: userId
+            },
+            select: {
+                id: true,
+                name: true
+            }
+        });
+
+        // レスポンスデータの整形
+        const formattedResponse = {
+            userId: userInfo.id,
+            userName: userInfo.name,
+            rentalBooks: userRentalBooks.map(rental => ({
+                rentalId: rental.id,
+                bookId: rental.bookId,
+                bookName: rental.books.title,
+                rentalDate: rental.rentalDate,
+                returnDeadline: rental.returnDeadline
+            }))
+        };
+
+        return res.status(200).json(formattedResponse);
+
+    } catch (error) {
+        console.error("Error fetching user's current rentals:", error);
+        return res.status(500).json({ error: "サーバーエラーが発生しました。" });
+    }
+});
 
 module.exports = router;

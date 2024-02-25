@@ -10,21 +10,6 @@ const { calcHash, generateSalt } = require('../util/auth')
 const prisma = new PrismaClient();
 
 
-/**
- * ログイン状態チェック
- */
-router.get("/check", (req, res, next) => {
-  if (!req.user) {
-    // 未ログインなら、Error オブジェクトを作って、ステータスを設定してスロー
-    const err = new Error("unauthenticated");
-    err.status = 401;
-    throw err;
-  }
-  // ここに来れるなら、ログイン済み。
-  res.json({
-    message: "logged in"
-  });
-});
 
 /**
  * ユーザ認証
@@ -86,10 +71,57 @@ router.get("/register", (req, res) => {
   res.render("signup"); // ユーザ登録ページを表示するための処理を追加する
 });
 
-router.get("/logout", (req, res, next) =>  {
+// ログアウト
+router.get('/logout', (req, res) => {
   req.logout((err) => {
-    res.status(200).json({message: "OK"});
+    if (err) {
+      return res.status(500).json({ result: 'NG', error: 'ログアウト中にエラーが発生しました。' });
+    }
+    res.status(200).json({ result: 'OK' });
   });
+});
+
+// ログイン状態チェック
+const admincheck = async (req, res, next) => {
+  try {
+    // ログイン中のユーザー情報を取得
+    const currentUser = req.user;
+
+    // req.user が未定義の場合のハンドリング
+    if (!currentUser) {
+      res.status(403).json({ result: 'NG', error: 'Permission denied. User not logged in.' });
+      return;
+    }
+
+    // Prismaを使用してユーザーの権限を取得
+    const user = await prisma.users.findUnique({
+      where: { id: currentUser.id },
+      select: { isAdmin: true } // isAdminがtrueかfalseで取得
+    });
+
+    if (user && user.isAdmin === true) {
+      // ユーザーが管理者の場合
+      req.isAdmin = true;
+      next();
+    } else {
+      req.isAdmin = false;
+      next();
+    }
+  } catch (error) {
+    console.error('Error during isAdmin check:', error);
+    // エラーが発生した場合はエラーレスポンスを返す
+    res.status(500).json({ result: 'NG', error: 'Internal server error.' });
+  }
+};
+
+router.get('/check', admincheck, (req, res) => {
+  if (req.isAuthenticated()) {
+    // ログイン中の場合
+    return res.status(200).json({ result: 'OK', isAdmin: req.isAdmin });
+  } else {
+    // ログインしていない場合
+    return res.status(401).json({ result: 'NG' });
+  }
 });
 
 
