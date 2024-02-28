@@ -3,7 +3,7 @@ const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-const pageSize = 10; // 適切なページサイズに変更する
+const pageSize = 10;
 
 const loginCheck = (req, res, next) => {
     if (!req.user) {

@@ -14,7 +14,7 @@ const loginCheck = (req, res, next) => {
     next();
 };
 
-router.post("/start", async (req, res) => {
+router.post("/start", loginCheck, async (req, res) => {
     try {
         const bookId = req.body.bookId;
 
